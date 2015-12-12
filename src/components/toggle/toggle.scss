@@ -1,0 +1,31 @@
+.toggle {
+  position: relative;
+  display: inline-block;
+  height: 1rem;
+  width: 2rem;
+  border: 1px solid #000;
+  border-radius: 10rem;
+}
+
+  .toggle__handle {
+    left: 0;
+    background-color: #000;
+  }
+
+  [data-value="true"] .toggle__handle  {
+    left: calc(100% - 1rem);
+    background-color: red;
+  }
+
+
+
+  .toggle__track {
+  }
+
+  .toggle__handle {
+    position: absolute;
+    top: 0;
+    width: 1rem;
+    height: 1rem;
+    border-radius: .5rem;
+  }
