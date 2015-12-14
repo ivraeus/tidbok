@@ -1,0 +1,10 @@
+linters:
+
+  PropertySortOrder:
+    enabled: false
+
+  Indentation:
+    allow_non_nested_indentation: true
+
+  SelectorFormat:
+    convention: hyphenated_BEM
