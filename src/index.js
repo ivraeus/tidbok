@@ -3,76 +3,112 @@
   'use strict';
   console.log('init');
 
-  // add forEach to nodelist
+  // add utility functions to nodelist and HTMLCollection
   NodeList.prototype.forEach = Array.prototype.forEach;
+  HTMLCollection.prototype.forEach = Array.prototype.forEach;
+  HTMLCollection.prototype.map = Array.prototype.map;
 
   class Page {
     constructor(element) {
-      this._element  = element;
-      this._onTop    = element.getAttribute('data-on-top') || false;
-      this._onLeft   = element.getAttribute('data-on-left') || false;
-      this._onRight  = element.getAttribute('data-on-right') || false;
-      this._onBottom = element.getAttribute('data-on-bottom') || false;
+      this._element = element;
+    }
+  }
 
+  class PageSet {
+    constructor(element) {
+      this._element = element;
+      this._pages   = element.children.map(e => new Page(e));
+      this._axis    = (element.classList.contains(
+        'page-set--horizontal')) ? 'x' : 'y';
+      this._offset  = 0;
       this._element.addEventListener('touchstart', e => this._onTouchStart(e));
     }
 
     _onTouchStart(event) {
+      // Store original event for later.
+      let oldEvent = event;
 
+      // prevent default event
       event.preventDefault();
-      if (event.targetTouches.length > 1)  { return; }
 
-      let startTime = window.performance.now();
-      let lastPos = {x: 0, y: 0};
+      // true if paint is pending
+      let pendingPaint = false;
+
+      // direction of current swipe
+      let swipeAxis = false;
+
+      let windowSize = {
+        x: window.innerWidth,
+        y: window.innerHeight
+      };
+
       let startPos = {
         x: event.touches[0].pageX,
         y: event.touches[0].pageY
       };
 
-      let lockedAxis = false;
-      let pendingPaint = false;
+      let deltaPos = {
+        x: 0,
+        y: 0
+      };
+
       let onTouchMove = event => {
+        if (!pendingPaint) {
+          // All calculation in here. (max 60 times per second)
+          requestAnimationFrame(() => {
 
-        let deltaPos = {
-          x: event.touches[0].pageX - startPos.x,
-          y: event.touches[0].pageY - startPos.y
-        };
+            deltaPos = {
+              x: event.touches[0].pageX - startPos.x,
+              y: event.touches[0].pageY - startPos.y
+            };
 
-        if (!lockedAxis) {
-          // Lock axis on first > 20px delta event.
-          if (Math.abs(deltaPos.x) > 20) {
-            if (!this._onLeft && !this._onRight) { return; };
-            lockedAxis = 'x';
-          } else if (Math.abs(deltaPos.y) > 20) {
-            if (!this._onTop && !this._bottom) { return; };
-            lockedAxis = 'y';
-          }
-
-          // Set new start position when axis is determined.
-          if (lockedAxis) { startPos = deltaPos; }
-        }
-
-        // Continue when locked axis.
-        if (lockedAxis) {
-          // Continue if last paint has occurred.
-          if (!pendingPaint) {
-            pendingPaint = true;
-            requestAnimationFrame(() => {
-              
-              // PAINT HERE
-              if (lockedAxis === 'x') {
-                this._element.style.left = 0 + deltaPos.x + 'px';
-              } else {
-                this._element.style.top = 0 + deltaPos.y + 'px';
+            if (!swipeAxis) {
+              if (Math.abs(deltaPos.x) > 20) {
+                swipeAxis = 'x';
+              } else if (Math.abs(deltaPos.y) > 20) {
+                swipeAxis = 'y';
               }
-              pendingPaint = false;
-            });
-          }
+            } else if (swipeAxis === this._axis) {
+              // stop event for other targets if this is an allowed swipe
+              event.stopPropagation();
+
+              // scroll correct axis
+              // if (this._axis === 'x') {
+              //   this._element.scrollLeft = -deltaPos.x +
+              //     (this._offset * window.innerWidth);
+              // } else {
+              //   this._element.scrollTop = -deltaPos.y +
+              //     (this._offset * window.innerHeight);
+              // }
+
+            } else {
+              return false;
+            }
+
+            pendingPaint = false;
+          });
+          pendingPaint = true;
         }
       };
 
       let onTouchEnd = event => {
-        let deltaTime = Math.round(window.performance.now() - startTime);
+
+        this._element.innerHTML = this._offset;
+
+        // if (this._axis === 'x') {
+        //   if (deltaPos.x / window.innerWeight > 0.5) {
+        //     this._element.scrollTop += window.innerWeight;
+        //   } else if (deltaPos.x / window.innerWeight < -0.5) {
+        //     this._element.scrollTop += window.innerWeight;
+        //   }
+        // } else if (this._axis === 'y') {
+        //   if (deltaPos.y / window.innerHeight > 0.5) {
+        //     this._element.scrollTop += window.innerHeight;
+        //   } else if (deltaPos.y / window.innerHeight < -0.5) {
+        //     this._element.scrollTop += window.innerHeight;
+        //   }
+        // }
+
         document.removeEventListener('touchmove', onTouchMove);
         document.removeEventListener('touchend', onTouchEnd);
       };
@@ -82,6 +118,28 @@
     }
   }
 
-  document.querySelectorAll('.page').forEach(elm => { new Page(elm); });
+  document.querySelectorAll('.page-set').forEach(e => { new PageSet(e); });
 
 })();
+
+// if (this._axis === 'y') {
+//   if (deltaPos.y / window.innerHeight > 0.5) {
+//     this._offset -= 1;
+//     this._element.scrollTop = this._offset * window.innerHeight;
+//   } else if (deltaPos.y / window.innerHeight < -0.5) {
+//     this._offset += 1;
+//     this._element.scrollTop = this._offset * window.innerHeight;
+//   } else {
+//     this._element.scrollTop = this._offset * window.innerHeight;
+//   }
+// } else if (this._axis === 'x') {
+//   if (deltaPos.x / window.innerWidth > 0.5) {
+//     this._offset -= 1;
+//     this._element.scrollLeft = this._offset * window.innerWidth;
+//   } else if (deltaPos.x / window.innerWidth < -0.5) {
+//     this._offset += 1;
+//     this._element.scrollLeft = this._offset * window.innerWidth;
+//   } else {
+//     this._element.scrollLeft = this._offset * window.innerWidth;
+//   }
+// }
