@@ -38,50 +38,35 @@
           y: event.touches[0].pageY - startPos.y
         };
 
-        let wholePixel = false;
         if (!lockedAxis) {
           // Lock axis on first > 20px delta event.
           if (Math.abs(deltaPos.x) > 20) {
             if (!this._onLeft && !this._onRight) { return; };
             lockedAxis = 'x';
-            // Set new start position when axis is determined.
-            deltaPos.x = {
-              x: event.touches[0].pageX - startPos.x,
-              y: event.touches[0].pageY - startPos.y
-            };
           } else if (Math.abs(deltaPos.y) > 20) {
-            // if (!this._onTop && !this._bottom) { return; };
+            if (!this._onTop && !this._bottom) { return; };
             lockedAxis = 'y';
-            // Set new start position when axis is determined.
-            deltaPos = {
-              x: event.touches[0].pageX - startPos.x,
-              y: event.touches[0].pageY - startPos.y
-            };
           }
-        // calculate difference between move events and set wholePixel.
-        } else if (Math.abs(deltaPos[lockedAxis] - lastPos[lockedAxis]) > 1) {
-          lastPos = deltaPos;
-          wholePixel = true;
+
+          // Set new start position when axis is determined.
+          if (lockedAxis) { startPos = deltaPos; }
         }
 
         // Continue when locked axis.
         if (lockedAxis) {
-          // Continue when moved > 1px in locked axis direction.
-          // if (wholePixel) {
-            // Continue if last paint has occurred.
-            if (!pendingPaint) {
-              pendingPaint = true;
-              requestAnimationFrame(() => {
-                // PAINT HERE
-
-                if (lockedAxis === 'x') {
-                  this._element.style.left = 0 + deltaPos.x + 'px';
-                } else {
-                  this._element.style.top = 0 + deltaPos.y + 'px';
-                }
-                pendingPaint = false;
-              });
-            // }
+          // Continue if last paint has occurred.
+          if (!pendingPaint) {
+            pendingPaint = true;
+            requestAnimationFrame(() => {
+              
+              // PAINT HERE
+              if (lockedAxis === 'x') {
+                this._element.style.left = 0 + deltaPos.x + 'px';
+              } else {
+                this._element.style.top = 0 + deltaPos.y + 'px';
+              }
+              pendingPaint = false;
+            });
           }
         }
       };
