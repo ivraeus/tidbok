@@ -21,7 +21,10 @@ gulp.task('script', function () {
   return gulp.src('src/*.js')
     .pipe(sourcemaps.init())
     .pipe(babel())
-      .on('error', error => {console.log('error')})
+      .on('error', error => {
+        console.log(error);
+        this.emit('end');
+      })
     .pipe(uglify())
     .pipe(sourcemaps.write("."))
     .pipe(gulp.dest('dist'))
