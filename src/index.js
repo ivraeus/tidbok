@@ -1,5 +1,13 @@
 (() => {
 
+  // TODO!
+  // extract gestures in to own helper class.
+  //
+  // class Gesture {
+  //   constructor() {
+  //   }
+  // }
+
   'use strict';
   console.log('init');
 
@@ -24,7 +32,7 @@
         'page-set--horizontal')) ? 'x' : 'y';
       this._element.addEventListener('touchstart', e => this._onTouchStart(e));
 
-      this._setPosition()
+      this._setPosition();
     }
 
     _setPosition() {
@@ -45,7 +53,7 @@
       // prevent default event
       event.preventDefault();
 
-      let startTime = window.performance.now()
+      let startTime = window.performance.now();
 
       // true if paint is pending
       let pendingPaint = false;
@@ -85,7 +93,9 @@
           // stop event for other targets if this is an allowed swipe
           event.stopPropagation();
 
+          // only run if no paint in pipeline.
           if (!pendingPaint) {
+
             // paint swipe here
             requestAnimationFrame(() => {
 
@@ -97,32 +107,28 @@
                 this._element.scrollTop = -deltaPos.y +
                   (this._offset * window.innerHeight);
               }
-
               pendingPaint = false;
             }); // requestAnimationFrame
             pendingPaint = true;
-          } // if (!pendingPaint)
-
+          }
         } else {
           return false;
         }
-
       };
 
       let onTouchEnd = event => {
 
-        let deltaTime = window.performance.now() - startTime
+        let deltaTime = window.performance.now() - startTime;
         let percentage = deltaPos[this._axis] / windowSize[this._axis];
         let velocity = (percentage * 100) / deltaTime;
 
         // swipe if more then half screen movement.
+        // swipe if more then .2 in velocity.
         if (percentage > 0.5 || velocity > 0.2) {
           this._offset = Math.max(this._offset - 1, 0);
         } else if (percentage < -0.5 || velocity < -0.2) {
-          this._offset = Math.min(this._offset + 1, this._pages.length -1);
+          this._offset = Math.min(this._offset + 1, this._pages.length - 1);
         }
-
-        // this._element.innerHTML = velocity;
 
         this._setPosition();
 
