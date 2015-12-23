@@ -19,6 +19,8 @@ body {
   overflow: hidden;
   box-sizing: border-box;
   font-weight: 400;
+  font-family: 'Roboto', sans-serif;
+  background-color: #bbb;
 }
 
 *,
@@ -31,65 +33,47 @@ body {
 
 
 
-.page-set {
-  min-width: 100%;
-  min-height: 100%;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  overflow: hidden;
+
+
+.flex {
+  display: flex
 }
 
-  .page-set--horizontal {
+  .flex--x {
     flex-direction: row;
   }
 
-  .page-set--vertical {
+  .flex--y {
     flex-direction: column;
   }
 
 
+
+
+
+
+
+
+
+
 .page {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%;
-  flex-shrink: 0;
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  min-height: 100%;
+  overflow: hidden;
+  visibility: hidden;
+  background-color: #FFF;
+  padding: .5rem 1rem;
+  transform: translateZ(0);
+  line-height: 1.5;
 }
 
-  .page--options {
-    background-color: pink;
-  }
-
-  .page--hours {
-    background-color: orange;
-  }
-
-  .page--mileage {
-    background-color: green;
-  }
-
-  .page__section {
-    text-align: center;
-  }
-
-  .page__fixed-header {
-    position: absolute;
-    background-color: red;
-    width: 100%;
-    z-index: 999;
-  }
-
-  .page__fixed-footer {
-    position: absolute;
-    background-color: green;
-    width: 100%;
-    bottom: 0;
-    z-index: 999;
-  }
+.inView {
+  visibility: visible;
+  box-shadow: 0 0 0 5px rgba(0, 0, 0, .1);
+}
 
 
 
@@ -105,6 +89,72 @@ body {
 
 
 
+
+
+
+
+
+
+
+
+// @keyframes popout {
+//   0% {
+//     transform: rotateY(0deg);
+//   }
+
+//   50% {
+//     transform: rotateY(90deg) perspective(400px);
+//   }
+
+//   100% {
+//     transform: rotateY(180deg);
+//   }
+// }
+
+// .active {
+//   transform-origin: 50% 50%;
+
+//   animation-duration: 700ms;
+//   animation-name: popout;
+//   animation-fill-mode: forwards;
+//   // animation-timing-function: cubic-bezier(0.47, 0, 0.745, 0.715);
+// }
+
+
+// .page--index {
+
+// }
+
+// .page--hours {
+//   background-color: orange;
+// }
+
+// .page--mileage {
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // .page__section {
+  //   text-align: center;
+  //   display: flex;
+  //   justify-content: center;
+  //   min-height: 3rem;
+  // }
 
 
 // .icon {
