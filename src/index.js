@@ -26,170 +26,110 @@
       this._prev = getSiblingIfClass(element, 'page', 'backwards');
       this._next = getSiblingIfClass(element, 'page', 'forwards');
       this._rect = element.getBoundingClientRect();
+      this._dx = 0;
 
       element.addEventListener('touchstart', e => this._onTouchStart(e));
     }
 
     _onTouchStart(event) {
-
+      if (event.touches.length > 1) return;
       event.preventDefault();
-      event.stopPropagation();
-
-      if (event.touches.length > 1) return true;
 
       let startTime = window.performance.now();
-
-      let pending = false;
+      let sx = event.touches[0].pageX;
+      let draging = true;
+      let direction = null;
 
       const SELF = this._self;
       const PREV = this._prev;
       const NEXT = this._next;
       const RECT = this._rect;
 
-      let startPos = {
-        x: event.touches[0].pageX,
-        y: event.touches[0].pageY
-      };
-
-      let deltaPos = { x: 0, y: 0 };
-
       if (PREV) {
         PREV.style.cssText = null;
-        PREV.style.left = '-30%';
-        PREV.classList.add('inView');
+        PREV.style.left = '-33.333333%';
+        PREV.classList.add('inView', 'inTransit');
       }
 
       if (NEXT) {
         NEXT.style.cssText = null;
         NEXT.style.left = '100%';
-        NEXT.classList.add('inView');
+        NEXT.classList.add('inView', 'inTransit');
       }
 
       SELF.style.cssText = null;
+      SELF.classList.add('inTransit');
+
+      this._dx = 0;
 
 
 
-      let onTouchMove = event => {
+      let dragPaintLoop = () => {
+        if (draging) {
+          requestAnimationFrame(dragPaintLoop);
 
-        event.preventDefault();
-        event.stopPropagation();
+          let prevPos = (this._dx > 0) ? this._dx / 3 : 0;
+          let nextPos = (this._dx < 0) ? this._dx : 0;
+          let selfPos = (this._dx < 0) ? this._dx / 3 : this._dx;
 
-        if (!pending) {
+          if (PREV) PREV.style.transform = 'translateX(' + prevPos + 'px)';
+          if (NEXT) NEXT.style.transform = 'translateX(' + nextPos + 'px)';
+          SELF.style.transform = 'translateX(' + selfPos + 'px)';
 
-          deltaPos.x = event.touches[0].pageX - startPos.x;
+        } else {
 
-          requestAnimationFrame(() => {
+          let percent = this._dx / RECT.width;
+          let normalized = Math.round(percent) * 100;
 
-            if (!PREV && deltaPos.x > 0) deltaPos.x = 0;
-            if (!NEXT && deltaPos.x < 0) deltaPos.x = 0;
-
-            let prevPos = (deltaPos.x > 0) ? deltaPos.x / 3 : 0;
-            let nextPos = (deltaPos.x < 0) ? deltaPos.x : 0;
-            let selfPos = (deltaPos.x < 0) ? deltaPos.x / 3 : deltaPos.x;
-
-            if (PREV) PREV.style.transform =
-              'translateX(' + prevPos + 'px)';
-
-            if (NEXT) NEXT.style.transform =
-              'translateX(' + nextPos + 'px)';
-
-            SELF.style.transform =
-              'translateX(' + selfPos + 'px)';
-
-            pending = false;
-          });
-
-          pending = true;
+          if (this._dx < 0) {
+            SELF.addEventListener('transitionend', onTransitionEnd);
+            if (NEXT) NEXT.style.transition = 'transform 200ms ease-out';
+            if (NEXT) NEXT.style.transform = 'translateX(' + normalized + '%)';
+            SELF.style.transform = 'translateX(' + normalized / 3 + '%)';
+            SELF.style.transition = 'transform 200ms ease-out';
+          } else if (this._dx > 0) {
+            SELF.addEventListener('transitionend', onTransitionEnd);
+            if (PREV) PREV.style.transition = 'transform 200ms ease-out';
+            if (PREV) PREV.style.transform = 'translateX(' + normalized / 3 + '%)';
+            SELF.style.transform = 'translateX(' + normalized + '%)';
+            SELF.style.transition = 'transform 200ms ease-out';
+          } else {
+            if (PREV) PREV.classList.remove('inView');
+            if (NEXT) NEXT.classList.remove('inView');
+          }
         }
       };
 
 
 
+      let onTouchMove = event => {
+        event.preventDefault();
+        this._dx = event.touches[0].pageX - sx;
+        if (!PREV && this._dx > 0) this._dx = 0;
+        if (!NEXT && this._dx < 0) this._dx = 0;
+      };
+
+
+
+      let onTransitionEnd = () => {
+        if (PREV) PREV.classList.remove('inTransit');
+        if (NEXT) NEXT.classList.remove('inTransit')
+        SELF.classList.remove('inTransit');
+        SELF.removeEventListener('transitionend', onTransitionEnd);
+      }
+
+
+
       let onTouchEnd = () => {
-
-        let deltaTime = window.performance.now() - startTime;
-        let percent = (deltaPos.x / RECT.width) * 100;
-        let velocity = percent / deltaTime;
-
-        let velocityThreshold = 0.16;
-        let percentTreshold = 50;
-
-        if (percent !== 0) {
-
-          requestAnimationFrame(() => {
-
-            if (percent > percentTreshold || velocity > velocityThreshold) {
-
-              PREV.style.transition = 'transform 200ms ease-out';
-              PREV.style.transform = 'translateX(30%)';
-              SELF.style.pointerEvents = 'none';
-              SELF.style.transition = 'transform 200ms ease-out';
-              SELF.style.transform = 'translateX(100%)';
-
-            } else if ( percent < -percentTreshold || velocity < -velocityThreshold) {
-
-              NEXT.style.transition = 'transform 200ms ease-out';
-              NEXT.style.transform = 'translateX(-100%)';
-              SELF.style.pointerEvents = 'none';
-              SELF.style.transition = 'transform 200ms ease-out';
-              SELF.style.transform = 'translateX(-30%)';
-
-            } else {
-
-              if (PREV) {
-                PREV.style.pointerEvents = 'none';
-                PREV.style.transition = 'transform 200ms ease-out';
-                PREV.style.transform = 'translateX(0)';
-              }
-
-              if (NEXT) {
-                NEXT.style.pointerEvents = 'none';
-                NEXT.style.transition = 'transform 200ms ease-out';
-                NEXT.style.transform = 'translateX(0)';
-              }
-
-              SELF.style.transition = 'transform 200ms ease-out';
-              SELF.style.transform = 'translateX(0)';
-            }
-
-          });
-
-
-
-          let onTransitionEnd = () => {
-
-            if (percent > percentTreshold || velocity > velocityThreshold) {
-
-              if (NEXT) NEXT.classList.remove('inView');
-              SELF.classList.remove('inView');
-
-            } else if ( percent < -percentTreshold || velocity < -velocityThreshold) {
-
-              if (PREV) PREV.classList.remove('inView');
-              SELF.classList.remove('inView');
-
-            } else {
-
-              if (PREV) PREV.classList.remove('inView');
-              if (NEXT) NEXT.classList.remove('inView');
-
-            }
-
-            SELF.removeEventListener('transitionend', onTransitionEnd);
-          };
-
-          SELF.addEventListener('transitionend', onTransitionEnd);
-
-        } else {
-          if (PREV) PREV.classList.remove('inView');
-          if (NEXT) NEXT.classList.remove('inView');
-        }
-
+        draging = false;
         document.removeEventListener('touchmove', onTouchMove);
         document.removeEventListener('touchend', onTouchEnd);
         document.removeEventListener('touchcancel', onTouchEnd);
       };
 
+
+
+      dragPaintLoop();
       document.addEventListener('touchmove', onTouchMove);
       document.addEventListener('touchend', onTouchEnd);
       document.addEventListener('touchcancel', onTouchEnd);
