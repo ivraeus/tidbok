@@ -1,8 +1,8 @@
 {
   "name": "Tidbok",
   "scope": "./",
-  "background_color": "#bababa",
+  "background_color": "red",
   "display": "standalone",
   "start_url": "./",
-  "theme_color": "#303F9F"
+  "theme_color": "red"
 }

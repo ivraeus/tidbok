@@ -62,25 +62,50 @@ body {
   left: 0;
   width: 100%;
   min-height: 100%;
-  overflow: hidden;
-  visibility: hidden;
-  background-color: #FFF;
   padding: .5rem 1rem;
-  transform: translateZ(0);
   line-height: 1.5;
+  will-change: transform;
 }
 
-.inView {
-  visibility: visible;
+  .page--shadow {
+    &:after {
+      content: '';
+      position: absolute;
+      width: 4px;
+      pointer-events: none;
+      height: 100%;
+      top: 0;
+      left: -4px;
+      border-left: 4px solid rgba(0,0,0,.15);
+    }
+  }
 
+  .page--smooth {
+    transition: transform 200ms ease-out;
+  }
+
+.noEvent {
+  .page {
+    pointer-events: none;
+  }
 }
 
-.inTransit {
-  box-shadow: 0 0 0 5px rgba(0, 0, 0, .2);
+
+.page:nth-of-type(1) {
+  background-color: orange;
 }
 
+.page:nth-of-type(2) {
+  background-color: lavender;
+}
 
+.page:nth-of-type(3) {
+  background-color: pink;
+}
 
+.page:nth-of-type(4) {
+  background-color: yellow;
+}
 
 
 
