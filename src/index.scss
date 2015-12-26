@@ -36,7 +36,7 @@ body {
 
 
 .flex {
-  display: flex
+  display: flex;
 }
 
   .flex--x {
@@ -47,10 +47,68 @@ body {
     flex-direction: column;
   }
 
+  .flex--sb {
+    justify-content: space-between;
+  }
+
+  .flex--sa {
+    justify-content: space-around;
+  }
+
+  .flex--c {
+    justify-content: center;
+  }
+
+  .flex--xl {
+    margin-right: auto;
+  }
+
+  .flex--xr {
+    margin-left: auto;
+  }
+
+  .flex--xc {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .flex--yt {
+    margin-bottom: auto;
+  }
+
+  .flex--yb {
+    margin-top: auto;
+  }
+
+  .flex--yc {
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+
+  .flex--max {
+    flex: 1;
+  }
+
+  .flex--min {
+    flex: 0;
+  }
 
 
 
 
+
+.button {
+  background-color: transparent;
+  border: 0;
+  padding: 20px;
+  font-size: inherit;
+  text-transform: uppercase;
+  color: $color-text-secondary;
+}
+
+  .button--primary {
+    color: $color-text-primary;
+  }
 
 
 
@@ -62,13 +120,13 @@ body {
   left: 0;
   width: 100%;
   min-height: 100%;
-  padding: .5rem 1rem;
   line-height: 1.5;
+  background-color: #fff;
   will-change: transform;
 }
 
   .page--shadow {
-    &:after {
+    &::after {
       content: '';
       position: absolute;
       width: 4px;
@@ -76,13 +134,15 @@ body {
       height: 100%;
       top: 0;
       left: -4px;
-      border-left: 4px solid rgba(0,0,0,.15);
+      border-left: 4px solid rgba(0,0,0,.1);
     }
   }
 
   .page--smooth {
     transition: transform 200ms ease-out;
   }
+
+
 
 .noEvent {
   .page {
@@ -91,21 +151,21 @@ body {
 }
 
 
-.page:nth-of-type(1) {
-  background-color: orange;
-}
+// .page:nth-of-type(1) {
+//   background-color: orange;
+// }
 
-.page:nth-of-type(2) {
-  background-color: lavender;
-}
+// .page:nth-of-type(2) {
+//   background-color: lavender;
+// }
 
-.page:nth-of-type(3) {
-  background-color: pink;
-}
+// .page:nth-of-type(3) {
+//   background-color: pink;
+// }
 
-.page:nth-of-type(4) {
-  background-color: yellow;
-}
+// .page:nth-of-type(4) {
+//   background-color: yellow;
+// }
 
 
 
