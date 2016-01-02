@@ -7,6 +7,10 @@ document.addEventListener('touchstart', e => {
   e.preventDefault();
 });
 
+Number.prototype.mod = function(n) {
+    return ((this % n) + n) % n;
+};
+
 NodeList.prototype.forEach = Array.prototype.forEach;
 HTMLCollection.prototype.forEach = Array.prototype.forEach;
 
@@ -21,6 +25,16 @@ function getSiblingIfClass(element, className, direction) {
   if (elm.classList.contains(className)) { return elm; }
   return false;
 }
+
+function linearEase(currentIteration, startValue, changeInValue, totalIterations) {
+  return changeInValue * currentIteration / totalIterations + startValue;
+}
+
+function easeOutCubic(currentIteration, startValue, changeInValue, totalIterations) {
+  return changeInValue * (Math.pow(currentIteration / totalIterations - 1, 3) + 1) + startValue;
+}
+
+
 
 class Page {
   constructor(element) {
@@ -206,83 +220,158 @@ Page.init();
 
 
 class Selector {
-  constructor(element) {
-    this._canvas    = element;
-    this._context   = element.getContext('2d');
+  constructor(canvas, options = {}) {
+    this._canvas    = canvas;
+    this._options   = options;
+    this._context   = canvas.getContext('2d');
+    this._ratio     = window.devicePixelRatio;
     this._draging   = false;
-    this._animating = false;
+    this._easing    = false;
     this._position  = 0;
-    this._maxValue  = 2026;   // false, infinite positive
-    this._minValue  = 2006;   // false, infinite negative
-    this._value     = 2016;
-    this._step      = 1;      // 0.25 for time
-    this._fraction  = 1;      // 60 (0.25 * 60 = 15m)
-    this._loop      = false;
-    this._map       = false;  // [JAN, FEB, MAR, ...]
-    this._labels    = true;
+    this._velocity  = 0;
+    this._startVal  = 0;
+    this._minValue  = -Infinity;
+    this._maxValue  = Infinity;
+    this._value     = 0;
+    this._mapFunc   = 0;
+    this._leap      = 1;
+    this._step      = 0;
 
-    this._colorArrow    = '#009';
-    this._colorStep     = '#999';
-    this._colorFraction = '#999';
+    this._colorArrow    = '#007EE5';
+    this._colorGrade    = '#ddd';
     this._colorLabel    = '#333';
-    this._colorTrack    = '#999';
 
-    this._height = element.offsetHeight;
-    this._width = element.offsetWidth;
-    this._unitWidth = Math.round(this._width / 4);
-    this._units = Math.ceil(this._unitWidth / this._width);
-
+    this._height = canvas.offsetHeight * this._ratio;
+    this._width = canvas.offsetWidth * this._ratio;
+    this._unitWidth = Math.round(this._width / 5);
+    this._units = Math.round(this._width / this._unitWidth);
     this._canvas.width = this._width;
     this._canvas.height = this._height;
 
-    this._paintLoop();
+    this._setDefaults();
+    this._startPaintLoop();
 
-    element.addEventListener('touchstart', e => this._onTouchStart(e));
+    canvas.addEventListener('touchstart', e => this._onTouchStart(e));
   }
 
-  _paintLoop() {
-
-    const ctx = this._context;
-
-    ctx.clearRect(0, 0, this._width, this._height);
-
-    if (this._draging || this._animating) {
-      requestAnimationFrame(() => this._paintLoop());
-
-    } else {
-      console.log('last paint');
+  _setDefaults() {
+    for (var key in this._options) {
+      if (this._options.hasOwnProperty(key)) {
+        this['_' + key] = this._options[key];
+      }
     }
+  }
 
+  _startPaintLoop() {
 
-    for (var i = 0; i < 5; i++) {
-      let x = this._position + (this._unitWidth * i);
-      ctx.fillStyle = this._colorStep;
-      ctx.fillRect (x, 0, 2, this._height);
+    let output = this._context;
+    let unit = this._unitWidth;
+    let leap = this._leap;
+    let step = this._step;
+    let steps = (step) ? leap / step : 1;
+
+    let itteration = 0;
+    let duration = 40;
+
+    let paintLoop = () => {
+
+      let fraction = this._position / unit;
+
+      if (this._draging) {
+        requestAnimationFrame(paintLoop);
+      } else if (this._easing) {
+        requestAnimationFrame(paintLoop);
+
+          this._position = easeOutCubic(
+            itteration,
+            this._startVal,
+            this._velocity,
+            duration
+          );
+
+          if (itteration >= duration) {
+            this._easing = false;
+          };
+
+          itteration ++;
+
+      }
+
+      if (this._position >= unit) {
+        this._position -= unit;
+        this._startVal -= unit;
+        this._value -= leap;
+      } else if (this._position <= -unit) {
+        this._position += unit;
+        this._startVal += unit;
+        this._value += leap;
+      }
+
+      output.clearRect(0, 0, this._width, this._height);
+      output.font = "40px Arial";
+
+      for (let i = 0; i < this._units + 2; i++) {
+
+        let text = (this._mapFunc)
+          ? this._mapFunc((this._value - 4 + i).mod(this._maxValue))
+          : (this._value - 4 + i).mod(this._maxValue);
+
+        let gradePos = -unit / 2 + this._position + (unit * i) - 2;
+        let textPos = gradePos - output.measureText(text).width / 2;
+
+        output.fillStyle = this._colorLabel;
+        output.fillText(text, textPos, 70);
+
+        output.fillStyle = this._colorGrade;
+        output.fillRect(gradePos, 100, 4, this._height - 140);
+
+        for (let t = 1; t < steps; t++) {
+          output.fillRect(gradePos + (unit * step * t), 120, 4, this._height - 160);
+        };
+      };
+
+      output.fillRect (0, this._height - 44, this._width, 4);
+
+      output.fillStyle = this._colorArrow;
+      output.fillRect((this._width / 2) - 2, 90, 4, this._height - 130);
     };
 
-
-  }
+    paintLoop();
+  };
 
   _onTouchStart(event) {
     event.preventDefault();
     event.stopPropagation();
 
     let lastPos = event.touches[0].pageX;
+    let lastChange = 0;
+    let lastTime = 0;
 
     this._draging = true;
-    this._animating = true;
-    this._paintLoop();
+    this._startPaintLoop();
 
     let onTouchMove = event => {
       let newPos = event.touches[0].pageX;
-      this._position += newPos - lastPos;
+      lastChange = (newPos - lastPos) * this._ratio;
+      lastTime = window.performance.now();
+      this._position += lastChange;
       lastPos = newPos;
-      console.log(this._position);
     }
 
-    let onTouchEnd = () => {
+    let onTouchEnd = event => {
+
+      let leap = this._leap;
+      let step = this._step;
+      let unit = this._unitWidth;
+      let steps = (step) ? leap / step : 1;
+      let fraction = this._position / unit;
+      let interpolation = -unit * Math.round(fraction * steps) / steps;
+      let deltaTime = window.performance.now() - lastTime;
+
+      this._velocity = (Math.round(lastChange / deltaTime) * this._unitWidth);
+      this._startVal = interpolation;
       this._draging = false;
-      this._animating = false;
+      this._easing = true;
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
     }
@@ -292,9 +381,59 @@ class Selector {
   }
 }
 
-new Selector(document.querySelector('.selector--year'));
-new Selector(document.querySelector('.selector--month'));
-new Selector(document.querySelector('.selector--date'));
-new Selector(document.querySelector('.selector--time'));
+new Selector(
+  document.querySelector('.selector--year'),
+  {
+    minValue: 1000,
+    maxValue: 3000,
+    value: 2015,
+    mapFunc: val => {
+      return val + 1;
+    }
+  }
+);
+
+new Selector(
+  document.querySelector('.selector--month'),
+  {
+    minValue: 0,
+    maxValue: 12,
+    value: 1,
+    mapFunc: val => {
+      let months = [
+        'JAN', 'FEB', 'MAR',
+        'APR', 'MAJ', 'JUN',
+        'JUL', 'AUG', 'SEP',
+        'OKT', 'NOV', 'DEC'
+      ];
+      return months[val];
+    }
+  }
+);
+
+new Selector(
+  document.querySelector('.selector--date'),
+  {
+    minValue: 0,
+    maxValue: 31,
+    value: 1,
+    mapFunc: val => {
+      return val + 1;
+    }
+  }
+);
+
+new Selector(
+  document.querySelector('.selector--time'),
+  {
+    minValue: 0,
+    maxValue: 12,
+    value: 8,
+    step: 0.25,
+    mapFunc: val => {
+      return val + 1;
+    }
+  }
+);
 
 })();
