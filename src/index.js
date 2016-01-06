@@ -3,16 +3,33 @@
 'use strict';
 console.log('init');
 
+NodeList.prototype.forEach = Array.prototype.forEach;
+HTMLCollection.prototype.forEach = Array.prototype.forEach;
+
 document.addEventListener('touchstart', e => {
   e.preventDefault();
 });
 
-Number.prototype.mod = function(n) {
-    return ((this % n) + n) % n;
-};
+let mod = (num, mod) => {
+  return ((num%mod)+mod)%mod;
+  // return num -mod * (Math.ceil(num/mod)-1);
+}
 
-NodeList.prototype.forEach = Array.prototype.forEach;
-HTMLCollection.prototype.forEach = Array.prototype.forEach;
+let rem = (num, denom) => {
+  return Math[num > 0 ? 'floor' : 'ceil'](num % denom);
+}
+
+// let div = (num, denom) => {
+//     return Math[num > 0 ? 'floor' : 'ceil'](num / denom);
+// }
+
+// t: iteration
+// b: start value
+// c: end value
+// d: duration
+let easeOutQuad = (t, b, c, d) => {
+  return -c *(t/=d)*(t-2) + b;
+}
 
 function getSiblingIfClass(element, className, direction) {
   let elm = null;
@@ -26,16 +43,6 @@ function getSiblingIfClass(element, className, direction) {
   return false;
 }
 
-function linearEase(currentIteration, startValue, changeInValue, totalIterations) {
-  return changeInValue * currentIteration / totalIterations + startValue;
-}
-
-function easeOutCubic(currentIteration, startValue, changeInValue, totalIterations) {
-  return changeInValue * (Math.pow(currentIteration / totalIterations - 1, 3) + 1) + startValue;
-}
-
-
-
 class Page {
   constructor(element) {
     this._self = element;
@@ -45,7 +52,7 @@ class Page {
     this._btns = element.getElementsByClassName('button');
     this._sx = 0;
     this._dx = 0;
-    this._draging = false;
+    this._pulling = false;
 
     element.addEventListener('touchstart', e => this._onTouchStart(e));
 
@@ -104,7 +111,7 @@ class Page {
   _dragPaintLoop() {
     let percent = 0;
 
-    if (this._draging) {
+    if (this._pulling) {
       requestAnimationFrame(() => this._dragPaintLoop());
       percent = (this._dx / this._size.width) * 100;
 
@@ -148,7 +155,7 @@ class Page {
     if (this._next) this._next.classList.add('page--shadow');
     this._sx = event.touches[0].pageX;
     this._dx = 0;
-    this._draging = true;
+    this._pulling = true;
     this._dragPaintLoop();
 
     document.addEventListener('touchmove', e => this._onTouchMove(e));
@@ -163,7 +170,7 @@ class Page {
   };
 
   _onTouchEnd() {
-    this._draging = false;
+    this._pulling = false;
     document.removeEventListener('touchmove', e => this._onTouchMove(e));
     document.removeEventListener('touchend', () => this._onTouchEnd());
     document.removeEventListener('touchcancel', () => this._onTouchEnd());
@@ -216,37 +223,31 @@ class Page {
 }
 Page.init();
 
-
-
-
 class Selector {
   constructor(canvas, options = {}) {
+
     this._canvas    = canvas;
     this._options   = options;
     this._context   = canvas.getContext('2d');
-    this._ratio     = window.devicePixelRatio;
-    this._draging   = false;
+    this._pulling   = false;
     this._easing    = false;
-    this._position  = 0;
-    this._velocity  = 0;
-    this._startVal  = 0;
+    this._valueMap  = false;
+    this._onChange  = false;
     this._minValue  = -Infinity;
     this._maxValue  = Infinity;
+    this._position  = 0;
     this._value     = 0;
-    this._mapFunc   = 0;
-    this._leap      = 1;
-    this._step      = 0;
-
-    this._colorArrow    = '#007EE5';
-    this._colorGrade    = '#ddd';
-    this._colorLabel    = '#333';
-
-    this._height = canvas.offsetHeight * this._ratio;
-    this._width = canvas.offsetWidth * this._ratio;
+    this._step      = 1;
+    this._ratio     = window.devicePixelRatio;
+    this._height    = canvas.offsetHeight * this._ratio;
+    this._width     = canvas.offsetWidth * this._ratio;
     this._unitWidth = Math.round(this._width / 5);
-    this._units = Math.round(this._width / this._unitWidth);
-    this._canvas.width = this._width;
-    this._canvas.height = this._height;
+    this._unitCount = Math.round(this._width / this._unitWidth);
+
+    this._colArrow  = '#007EE5';
+    this._colGrade  = '#bbb';
+    this._colMidle  = '#eee';
+    this._colLabel  = '#333';
 
     this._setDefaults();
     this._startPaintLoop();
@@ -260,80 +261,60 @@ class Selector {
         this['_' + key] = this._options[key];
       }
     }
+
+    this._canvas.width = this._width;
+    this._canvas.height = this._height;
+    this._context.translate(Math.round(this._width / 2), 0);
+    this._context.font = "40px Arial";
   }
 
   _startPaintLoop() {
 
     let output = this._context;
-    let unit = this._unitWidth;
-    let leap = this._leap;
-    let step = this._step;
-    let steps = (step) ? leap / step : 1;
-
-    let itteration = 0;
-    let duration = 40;
+    let count  = this._unitCount / 2;
+    let unit   = this._unitWidth;
+    let width  = this._width;
+    let height = this._height;
 
     let paintLoop = () => {
 
-      let fraction = this._position / unit;
+      if (this._easing) {
 
-      if (this._draging) {
-        requestAnimationFrame(paintLoop);
-      } else if (this._easing) {
-        requestAnimationFrame(paintLoop);
+        this._position = easeOutQuad(
+          this._easing.iteration++,
+          this._easing.startPos,
+          this._easing.posChange,
+          this._easing.duration
+        );
 
-          this._position = easeOutCubic(
-            itteration,
-            this._startVal,
-            this._velocity,
-            duration
-          );
-
-          if (itteration >= duration) {
-            this._easing = false;
-          };
-
-          itteration ++;
-
-      }
-
-      if (this._position >= unit) {
-        this._position -= unit;
-        this._startVal -= unit;
-        this._value -= leap;
-      } else if (this._position <= -unit) {
-        this._position += unit;
-        this._startVal += unit;
-        this._value += leap;
-      }
-
-      output.clearRect(0, 0, this._width, this._height);
-      output.font = "40px Arial";
-
-      for (let i = 0; i < this._units + 2; i++) {
-
-        let text = (this._mapFunc)
-          ? this._mapFunc((this._value - 4 + i).mod(this._maxValue))
-          : (this._value - 4 + i).mod(this._maxValue);
-
-        let gradePos = -unit / 2 + this._position + (unit * i) - 2;
-        let textPos = gradePos - output.measureText(text).width / 2;
-
-        output.fillStyle = this._colorLabel;
-        output.fillText(text, textPos, 70);
-
-        output.fillStyle = this._colorGrade;
-        output.fillRect(gradePos, 100, 4, this._height - 140);
-
-        for (let t = 1; t < steps; t++) {
-          output.fillRect(gradePos + (unit * step * t), 120, 4, this._height - 160);
+        if (this._easing.iteration >= this._easing.duration) {
+          this._easing = false;
         };
+      }
+
+      let pos = mod(this._position, unit) - 2;
+      output.clearRect(-width / 2, 0, width, height);
+
+      output.fillStyle = this._colGrade;
+      for (var i = 0; i <= count + 1; i++) {
+        output.fillRect(pos + (i * -unit), 75, 4, height - 90);
+        output.fillRect(pos + (i * +unit), 75, 4, height - 90);
       };
 
-      output.fillRect (0, this._height - 44, this._width, 4);
+      output.fillStyle = this._colLabel;
+      for (var i = 0; i <= count + 1; i++) {
+        output.fillText('text', pos + (i * -unit)
+          - (output.measureText('text').width / 2), 40);
+        output.fillText('text', pos + (i * +unit)
+          - (output.measureText('text').width / 2), 40);
+      };
 
-      output.fillStyle = this._colorArrow;
-      output.fillRect((this._width / 2) - 2, 90, 4, this._height - 130);
+      output.fillStyle = this._colArrow;
+      output.fillRect(-2, 60, 4, height);
+
+      if (this._pulling || this._easing) {
+        requestAnimationFrame(paintLoop);
+      }
     };
 
     paintLoop();
@@ -343,35 +324,39 @@ class Selector {
     event.preventDefault();
     event.stopPropagation();
 
-    let lastPos = event.touches[0].pageX;
-    let lastChange = 0;
-    let lastTime = 0;
+    let lastPosition = event.touches[0].pageX;
+    let lastChange   = 0;
 
-    this._draging = true;
+    this._easing  = null;
+    this._pulling = true;
     this._startPaintLoop();
 
     let onTouchMove = event => {
       let newPos = event.touches[0].pageX;
-      lastChange = (newPos - lastPos) * this._ratio;
-      lastTime = window.performance.now();
+      lastChange = (newPos - lastPosition) * this._ratio;
       this._position += lastChange;
-      lastPos = newPos;
+      lastPosition = newPos;
     }
 
-    let onTouchEnd = event => {
+    let onTouchEnd = () => {
 
-      let leap = this._leap;
-      let step = this._step;
-      let unit = this._unitWidth;
-      let steps = (step) ? leap / step : 1;
-      let fraction = this._position / unit;
-      let interpolation = -unit * Math.round(fraction * steps) / steps;
-      let deltaTime = window.performance.now() - lastTime;
+      let velocity = Math.min(lastChange, 300);
+      let adjust = 0;
 
-      this._velocity = (Math.round(lastChange / deltaTime) * this._unitWidth);
-      this._startVal = interpolation;
-      this._draging = false;
-      this._easing = true;
+      if (velocity < 0) {
+        adjust = -mod(this._position, this._unitWidth);
+      } else {
+        adjust = -mod(this._position, this._unitWidth) + this._unitWidth;
+      }
+
+      this._easing = {
+        iteration: 0,
+        startPos: this._position,
+        posChange: adjust + Math.round(velocity / 16) * this._unitWidth,
+        duration: 24
+      };
+
+      this._pulling = false;
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
     }
@@ -381,7 +366,7 @@ class Selector {
   }
 }
 
-new Selector(
+let yearSelector = new Selector(
   document.querySelector('.selector--year'),
   {
     minValue: 1000,
@@ -393,7 +378,7 @@ new Selector(
   }
 );
 
-new Selector(
+let monthSelector = new Selector(
   document.querySelector('.selector--month'),
   {
     minValue: 0,
@@ -411,7 +396,7 @@ new Selector(
   }
 );
 
-new Selector(
+let dateSelector = new Selector(
   document.querySelector('.selector--date'),
   {
     minValue: 0,
@@ -423,7 +408,7 @@ new Selector(
   }
 );
 
-new Selector(
+let hourSelector = new Selector(
   document.querySelector('.selector--time'),
   {
     minValue: 0,
