@@ -13,15 +13,19 @@ document.addEventListener('touchstart', e => {
 let mod = (num, mod) => {
   return ((num%mod)+mod)%mod;
   // return num -mod * (Math.ceil(num/mod)-1);
-}
+};
 
 let rem = (num, denom) => {
   return Math[num > 0 ? 'floor' : 'ceil'](num % denom);
-}
+};
 
-// let div = (num, denom) => {
-//     return Math[num > 0 ? 'floor' : 'ceil'](num / denom);
-// }
+let div = (num, denom) => {
+    return Math[num > 0 ? 'floor' : 'ceil'](num / denom);
+};
+
+let between = (x, min, max) => {
+  return x >= min && x <= max;
+};
 
 // t: iteration
 // b: start value
@@ -29,7 +33,19 @@ let rem = (num, denom) => {
 // d: duration
 let easeOutQuad = (t, b, c, d) => {
   return -c *(t/=d)*(t-2) + b;
-}
+};
+
+let easeOutQuart = (t, b, c, d) => {
+  return -c * ((t=t/d-1)*t*t*t - 1) + b;
+};
+
+let easeOutElastic = (t, b, c, d) => {
+  var s=1.70158;var p=0;var a=c;
+  if (t==0) return b;  if ((t/=d)==1) return b+c;  if (!p) p=d*.3;
+  if (a < Math.abs(c)) { a=c; var s=p/4; }
+  else var s = p/(2*Math.PI) * Math.asin (c/a);
+  return a*Math.pow(2,-10*t) * Math.sin( (t*d-s)*(2*Math.PI)/p ) + c + b;
+};
 
 function getSiblingIfClass(element, className, direction) {
   let elm = null;
@@ -233,6 +249,7 @@ class Selector {
     this._easing    = false;
     this._valueMap  = false;
     this._onChange  = false;
+    this._running   = false;
     this._minValue  = -Infinity;
     this._maxValue  = Infinity;
     this._position  = 0;
@@ -250,8 +267,6 @@ class Selector {
     this._colLabel  = '#333';
 
     this._setDefaults();
-    this._startPaintLoop();
-
     canvas.addEventListener('touchstart', e => this._onTouchStart(e));
   }
 
@@ -266,97 +281,109 @@ class Selector {
     this._canvas.height = this._height;
     this._context.translate(Math.round(this._width / 2), 0);
     this._context.font = "40px Arial";
+    this._paint();
   }
 
-  _startPaintLoop() {
-
-    let output = this._context;
-    let count  = this._unitCount / 2;
-    let unit   = this._unitWidth;
-    let width  = this._width;
-    let height = this._height;
-
-    let paintLoop = () => {
-
-      if (this._easing) {
-
-        this._position = easeOutQuad(
-          this._easing.iteration++,
-          this._easing.startPos,
-          this._easing.posChange,
-          this._easing.duration
-        );
-
-        if (this._easing.iteration >= this._easing.duration) {
-          this._easing = false;
-        };
-      }
-
-      let pos = mod(this._position, unit) - 2;
-      output.clearRect(-width / 2, 0, width, height);
-
-      output.fillStyle = this._colGrade;
-      for (var i = 0; i <= count + 1; i++) {
-        output.fillRect(pos + (i * -unit), 75, 4, height - 90);
-        output.fillRect(pos + (i * +unit), 75, 4, height - 90);
-      };
-
-      output.fillStyle = this._colLabel;
-      for (var i = 0; i <= count + 1; i++) {
-        output.fillText('text', pos + (i * -unit)
-          - (output.measureText('text').width / 2), 40);
-        output.fillText('text', pos + (i * +unit)
-          - (output.measureText('text').width / 2), 40);
-      };
-
-      output.fillStyle = this._colArrow;
-      output.fillRect(-2, 60, 4, height);
-
-      if (this._pulling || this._easing) {
-        requestAnimationFrame(paintLoop);
-      }
-    };
-
-    paintLoop();
+  _pullLoop() {
+    if (!this._easing) {
+      this._paint();
+      requestAnimationFrame(() => this._pullLoop());
+    }
   };
 
+  _easeLoop(time) {
+
+    if (!this._pulling && this._easing.iteration <= this._easing.duration) {
+
+      let now = window.performance.now();
+      let delta = 1000 / (now - this._easing.last) / 60;
+      this._easing.last = now;
+
+
+      this._position = easeOutQuad(
+        this._easing.iteration++,
+        this._easing.start,
+        this._easing.shift,
+        this._easing.duration
+      );
+
+      this._paint();
+      requestAnimationFrame(() => this._easeLoop());
+      // setTimeout(() => this._easeLoop(), 1000 / 30);
+    } else {
+      this._easing = false;
+    }
+  }
+
+  _paint() {
+    let pos = mod(this._position, this._unitWidth) - 2;
+    this._context.clearRect(-this._width / 2, 0, this._width, this._height);
+
+    this._context.fillStyle = this._colGrade;
+    for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
+      this._context.fillRect(pos + (i * -this._unitWidth), 75, 4, this._height - 90);
+      this._context.fillRect(pos + (i * +this._unitWidth), 75, 4, this._height - 90);
+    };
+
+    this._context.fillStyle = this._colLabel;
+    for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
+      this._context.fillText('value', pos + (i * -this._unitWidth)
+        - (this._context.measureText('value').width / 2), 40);
+      this._context.fillText('value', pos + (i * +this._unitWidth)
+        - (this._context.measureText('value').width / 2), 40);
+    };
+
+    this._context.fillStyle = this._colArrow;
+    this._context.fillRect(-2, 60, 4, this._height);
+  }
+
   _onTouchStart(event) {
+    this._pulling = true;
+    this._easing = false;
+
     event.preventDefault();
     event.stopPropagation();
 
-    let lastPosition = event.touches[0].pageX;
-    let lastChange   = 0;
+    let lastPos = event.touches[0].pageX * this._ratio;
+    let lastTime = window.performance.now();
 
-    this._easing  = null;
-    this._pulling = true;
-    this._startPaintLoop();
+    this._pullLoop();
+
+    let frameIndex = 0;
+    let frameSpeed = [];
+    let frameDelta = [];
 
     let onTouchMove = event => {
-      let newPos = event.touches[0].pageX;
-      lastChange = (newPos - lastPosition) * this._ratio;
-      this._position += lastChange;
-      lastPosition = newPos;
+      let newTime = window.performance.now();
+      let newPos = event.touches[0].pageX * this._ratio;
+      this._position += newPos - lastPos
+      frameSpeed[frameIndex] = newPos - lastPos;
+      frameDelta[frameIndex] = newTime - lastTime;
+      lastTime = newTime;
+      lastPos = newPos;
+      if(++frameIndex >= 4) frameIndex = 0;
     }
 
     let onTouchEnd = () => {
+      this._pulling = false;
 
-      let velocity = Math.min(lastChange, 300);
-      let adjust = 0;
+      if (frameSpeed.length || frameDelta.length) {
+        let speed = frameSpeed.reduce((prev, curr) => prev + curr) / frameSpeed.length;
+        let delta = frameDelta.reduce((prev, curr) => prev + curr) / frameDelta.length;
+        let shift = Math.abs(speed) * (speed / 3.6);
+        let adapt = mod(this._position + shift, this._unitWidth);
 
-      if (velocity < 0) {
-        adjust = -mod(this._position, this._unitWidth);
-      } else {
-        adjust = -mod(this._position, this._unitWidth) + this._unitWidth;
+        this._easing = {
+          iteration: 0,
+          start: this._position,
+          shift: shift - adapt,
+          duration: Math.abs(speed),
+          last: window.performance.now()
+        };
+
+        this._easeLoop();
       }
 
-      this._easing = {
-        iteration: 0,
-        startPos: this._position,
-        posChange: adjust + Math.round(velocity / 16) * this._unitWidth,
-        duration: 24
-      };
-
-      this._pulling = false;
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
     }
