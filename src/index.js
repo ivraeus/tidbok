@@ -5,10 +5,7 @@ console.log('init');
 
 NodeList.prototype.forEach = Array.prototype.forEach;
 HTMLCollection.prototype.forEach = Array.prototype.forEach;
-
-document.addEventListener('touchstart', e => {
-  e.preventDefault();
-});
+document.addEventListener('touchstart', e => e.preventDefault());
 
 let mod = (num, mod) => {
   return ((num%mod)+mod)%mod;
@@ -312,17 +309,21 @@ class Selector {
 
     this._context.fillStyle = this._colGrade;
     for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
-      this._context.fillRect(pos + (i * -this._unitWidth), 75, 4, this._height - 90);
-      this._context.fillRect(pos + (i * +this._unitWidth), 75, 4, this._height - 90);
+      this._context.fillRect(pos + (i * -this._unitWidth),
+        75, 4, this._height - 90);
+      this._context.fillRect(pos + (i * +this._unitWidth),
+        75, 4, this._height - 90);
     };
 
     if (this._step) {
       this._context.fillStyle = this._colStep;
       for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
-        let t = 3;
-        while(t--) {
-          this._context.fillRect(pos + (i * (-this._unitWidth * (t * this._step) + this._step)), 75, 4, this._height - 90);
-          this._context.fillRect(pos + (i * (+this._unitWidth * (t * this._step) + this._step)), 75, 4, this._height - 90);
+        let t = 4;
+        while(t-- > 1) {
+          this._context.fillRect(pos + (i * -this._unitWidth) - (t
+            * this._step * this._unitWidth) , 90, 4, this._height - 120);
+          this._context.fillRect(pos + (i * +this._unitWidth) + (t
+            * this._step * this._unitWidth) , 90, 4, this._height - 120);
         };
       };
     }
