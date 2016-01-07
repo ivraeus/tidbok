@@ -12,7 +12,6 @@ document.addEventListener('touchstart', e => {
 
 let mod = (num, mod) => {
   return ((num%mod)+mod)%mod;
-  // return num -mod * (Math.ceil(num/mod)-1);
 };
 
 let rem = (num, denom) => {
@@ -37,14 +36,6 @@ let easeOutQuad = (t, b, c, d) => {
 
 let easeOutQuart = (t, b, c, d) => {
   return -c * ((t=t/d-1)*t*t*t - 1) + b;
-};
-
-let easeOutElastic = (t, b, c, d) => {
-  var s=1.70158;var p=0;var a=c;
-  if (t==0) return b;  if ((t/=d)==1) return b+c;  if (!p) p=d*.3;
-  if (a < Math.abs(c)) { a=c; var s=p/4; }
-  else var s = p/(2*Math.PI) * Math.asin (c/a);
-  return a*Math.pow(2,-10*t) * Math.sin( (t*d-s)*(2*Math.PI)/p ) + c + b;
 };
 
 function getSiblingIfClass(element, className, direction) {
@@ -254,7 +245,7 @@ class Selector {
     this._maxValue  = Infinity;
     this._position  = 0;
     this._value     = 0;
-    this._step      = 1;
+    this._step      = 0;
     this._ratio     = window.devicePixelRatio;
     this._height    = canvas.offsetHeight * this._ratio;
     this._width     = canvas.offsetWidth * this._ratio;
@@ -263,7 +254,7 @@ class Selector {
 
     this._colArrow  = '#007EE5';
     this._colGrade  = '#bbb';
-    this._colMidle  = '#eee';
+    this._colStep   = '#eee';
     this._colLabel  = '#333';
 
     this._setDefaults();
@@ -325,6 +316,17 @@ class Selector {
       this._context.fillRect(pos + (i * +this._unitWidth), 75, 4, this._height - 90);
     };
 
+    if (this._step) {
+      this._context.fillStyle = this._colStep;
+      for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
+        let t = 3;
+        while(t--) {
+          this._context.fillRect(pos + (i * (-this._unitWidth * (t * this._step) + this._step)), 75, 4, this._height - 90);
+          this._context.fillRect(pos + (i * (+this._unitWidth * (t * this._step) + this._step)), 75, 4, this._height - 90);
+        };
+      };
+    }
+
     this._context.fillStyle = this._colLabel;
     for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
       this._context.fillText('value', pos + (i * -this._unitWidth)
@@ -368,8 +370,10 @@ class Selector {
       this._pulling = false;
 
       if (frameSpeed.length || frameDelta.length) {
-        let speed = frameSpeed.reduce((prev, curr) => prev + curr) / frameSpeed.length;
-        let delta = frameDelta.reduce((prev, curr) => prev + curr) / frameDelta.length;
+        let speed = frameSpeed.reduce((prev, curr) => prev
+          + curr) / frameSpeed.length;
+        let delta = frameDelta.reduce((prev, curr) => prev
+          + curr) / frameDelta.length;
         let shift = Math.abs(speed) * (speed / 3.6);
         let adapt = mod(this._position + shift, this._unitWidth);
 
