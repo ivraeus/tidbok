@@ -8,6 +8,8 @@ HTMLCollection.prototype.forEach = Array.prototype.forEach;
 document.addEventListener('touchstart', e => e.preventDefault());
 
 let mod = (num, mod) => {
+  // var remain = num % mod;
+  // return Math.floor(remain >= 0 ? remain : remain + mod);
   return ((num%mod)+mod)%mod;
 };
 
@@ -235,13 +237,13 @@ class Selector {
     this._context   = canvas.getContext('2d');
     this._pulling   = false;
     this._easing    = false;
-    this._valueMap  = false;
     this._onChange  = false;
     this._running   = false;
     this._minValue  = -Infinity;
     this._maxValue  = Infinity;
     this._position  = 0;
     this._value     = 0;
+    this._valueMap  = 0;
     this._step      = 0;
     this._ratio     = window.devicePixelRatio;
     this._height    = canvas.offsetHeight * this._ratio;
@@ -265,11 +267,22 @@ class Selector {
       }
     }
 
+    this._maxValue++;
     this._canvas.width = this._width;
     this._canvas.height = this._height;
     this._context.translate(Math.round(this._width / 2), 0);
     this._context.font = "40px Arial";
     this._paint();
+  }
+
+  _getIndex() {
+    return Math.round((-this._position /
+        this._unitWidth) % this._unitWidth);
+  }
+
+  _getValue(index) {
+    return mod(index,
+      this._maxValue);
   }
 
   _pullLoop() {
@@ -304,19 +317,21 @@ class Selector {
   }
 
   _paint() {
-    let pos = mod(this._position, this._unitWidth) - 2;
+    let pos = (this._position % this._unitWidth) - 2;
     this._context.clearRect(-this._width / 2, 0, this._width, this._height);
 
     this._context.fillStyle = this._colGrade;
     for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
       this._context.fillRect(pos + (i * -this._unitWidth),
         75, 4, this._height - 90);
-      this._context.fillRect(pos + (i * +this._unitWidth),
-        75, 4, this._height - 90);
+      if (i !== 0) {
+        this._context.fillRect(pos + (i * +this._unitWidth),
+          75, 4, this._height - 90);
+      }
     };
 
     if (this._step) {
-      this._context.fillStyle = this._colStep;
+      this._context.fillStyle = 'this._colStep';
       for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
         let t = 4;
         while(t-- > 1) {
@@ -328,12 +343,21 @@ class Selector {
       };
     }
 
+    let value = '';
+    let index = Math[this._position < 0 ? 'floor' : 'ceil'](
+      (-this._position / this._unitWidth) % this._unitWidth)
     this._context.fillStyle = this._colLabel;
     for (var i = 0; i <= this._unitCount / 2 + 1; i++) {
-      this._context.fillText('value', pos + (i * -this._unitWidth)
-        - (this._context.measureText('value').width / 2), 40);
-      this._context.fillText('value', pos + (i * +this._unitWidth)
-        - (this._context.measureText('value').width / 2), 40);
+      value = (this._valueMap) ? this._valueMap(this._getValue(index
+        - i)) : this._getValue(index - i);
+      this._context.fillText(value, pos + (i * -this._unitWidth)
+        - (this._context.measureText(value).width / 2), 40);
+      if (i !== 0) {
+        value = (this._valueMap) ? this._valueMap(this._getValue(index
+        + i)) : this._getValue(index + i);
+        this._context.fillText(value, pos + (i * +this._unitWidth)
+          - (this._context.measureText(value).width / 2), 40);
+      }
     };
 
     this._context.fillStyle = this._colArrow;
@@ -370,24 +394,44 @@ class Selector {
     let onTouchEnd = () => {
       this._pulling = false;
 
-      if (frameSpeed.length || frameDelta.length) {
-        let speed = frameSpeed.reduce((prev, curr) => prev
-          + curr) / frameSpeed.length;
-        let delta = frameDelta.reduce((prev, curr) => prev
-          + curr) / frameDelta.length;
-        let shift = Math.abs(speed) * (speed / 3.6);
-        let adapt = mod(this._position + shift, this._unitWidth);
+      // let speed = (frameSpeed.length) ? frameSpeed.reduce(
+      //   (prev, curr) => prev + curr) / frameSpeed.length : 0;
+      // let delta = (frameDelta.length) ? frameDelta.reduce(
+      //   (prev, curr) => prev + curr) / frameDelta.length : 0;
 
-        this._easing = {
-          iteration: 0,
-          start: this._position,
-          shift: shift - adapt,
-          duration: Math.abs(speed),
-          last: window.performance.now()
-        };
+      // let shift = 0;
+      // let adapt = 0;
+      // let turn  = (this._position < 0) ? -1 : 0;
+      // let inTransit = Boolean(mod(Math.round(this._position)
+      //   , this._unitWidth));
 
-        this._easeLoop();
-      }
+      // if (Math.abs(speed) < 3) { // Tap
+
+      //   if (inTransit) { // just stop scroll.
+      //     speed = 30;
+      //     adapt = mod(this._position, this._unitWidth);
+      //   } else {         // go to clicked position
+      //     speed = 30;
+      //     adapt = rem(this._position - (lastPos - this._width /
+      //       2), this._unitWidth) + (lastPos - this._width / 2);
+
+      //     // rem on negative position and mod on positive mabye?
+      //   }
+
+      // } else { // Swipe or atleast not tap
+      //   shift = Math.abs(speed) * (speed / 3.6);
+      //   adapt = mod(this._position + shift, this._unitWidth);
+      // }
+
+      // this._easing = {
+      //   iteration: 0,
+      //   start: this._position,
+      //   shift: Math.round(shift - adapt),
+      //   duration: Math.round(Math.abs(speed)),
+      //   last: window.performance.now()
+      // }
+
+      // this._easeLoop();
 
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
@@ -414,9 +458,9 @@ let monthSelector = new Selector(
   document.querySelector('.selector--month'),
   {
     minValue: 0,
-    maxValue: 12,
+    maxValue: 11,
     value: 1,
-    mapFunc: val => {
+    valueMap: val => {
       let months = [
         'JAN', 'FEB', 'MAR',
         'APR', 'MAJ', 'JUN',
@@ -443,7 +487,7 @@ let dateSelector = new Selector(
 let hourSelector = new Selector(
   document.querySelector('.selector--time'),
   {
-    minValue: 0,
+    minValue: 0.25,
     maxValue: 12,
     value: 8,
     step: 0.25,
